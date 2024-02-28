@@ -1,0 +1,6 @@
+# Utiliser l'image PostgreSQL officielle
+FROM postgres:latest
+ENV POSTGRES_PASSWORD=mon_mot_de_passe
+ENV POSTGRES_USER=admin
+COPY init.sql /docker-entrypoint-initdb.d/
+EXPOSE 5432

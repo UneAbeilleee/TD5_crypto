@@ -6,8 +6,6 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 import base64
 import secrets
-from tink import aead
-from tink.core import tink_config
 
 app = Flask(__name__)
 

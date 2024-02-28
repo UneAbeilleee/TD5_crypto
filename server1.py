@@ -1,43 +1,37 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import hashlib
 import requests
-from sqlalchemy import create_engine, Column, String, Integer
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-import uuid 
-from flask import Flask, render_template, request, jsonify
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
-from wtforms import StringField, PasswordField, SubmitField, validators
+from flask_sqlalchemy import SQLAlchemy
 import secrets
+import uuid
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:mon_mot_de_passe@localhost/password_db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-#Connexnio a Postgresql
-engine = create_engine('postgresql://admin_password:admin_password@localhost/password_db')
-Base = declarative_base()
+db = SQLAlchemy(app)
 
-#class user
-class User(Base):
+SERVER2_URL = "http://localhost:5001/encrypt"
+
+class User(db.Model):
     __tablename__ = 'utilisateur'
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    username = Column(String)
-    hashed_password = Column(String)
-
-Session = sessionmaker(bind=engine)
-Base.metadata.create_all(bind=engine)
+    id = db.Column(db.String, primary_key=True)
+    username = db.Column(db.String)
+    hashed_password = db.Column(db.String)
 
 class LoginForm(FlaskForm):
     username = StringField('Username')
     password = PasswordField('Password')
     submit = SubmitField('Login')
 
+@app.route('/')
+def home():
+    return 'Welcome to the home page!'
 
-
-SERVER2_URL = "http://localhost:5001/encrypt" 
-
-@app.route('/login', methods=['POST','GET'])
+@app.route('/login', methods=['POST', 'GET'])
 def login():
     form = LoginForm()
 
@@ -57,11 +51,9 @@ def login():
             encrypted_hash = response.json().get('encryptedHash')
 
             # Insérer le nom d'utilisateur et le hash encrypté dans la base de données
-            session = Session()
-            user = User(username=username, hashed_password=encrypted_hash)
-            session.add(user)
-            session.commit()
-            session.close()
+            user = User(id=str(uuid.uuid4()), username=username, hashed_password=encrypted_hash)
+            db.session.add(user)
+            db.session.commit()
 
             return jsonify({'message': 'Success'}), 200
         else:
