@@ -1,0 +1,29 @@
+Question 1: What is minimum length of a password created from 
+case-insensitive alphanumeric and having 64-bit of entropy?
+
+H=64 bits
+N=26+26+10 because 26 lowercase letters, 26 capital letters 
+and 10 numbers
+
+64=L*(Log(62)/Log(2))
+L=64/(Log(62)/Log(2))=10.75 
+ 
+So the minimum length is 11
+
+
+Attemp 1 :
+
+Store passwords in plain text or use weak hashing algorithms
+​
+Attemp 2 :
+
+Increase length
+Use capital letters, special characters, numbers, etc.
+Avoid common passwords: 12345,abcd,password
+Use double authentication
+
+Attemp 3 :
+To strengthen security against brute force attacks, you should favor a hashing algorithm specifically designed to be slow and memory intensive, such as bcrypt, scrypt or Argon2. These algorithms, taking into account a "salt" and an input cost factor, increase the time and resources required for hashing each password, thus introducing a significant barrier to attack attempts.
+
+Attemp 4 :
+To strengthen password security in the event of a data breach, an effective strategy involves the use of salted hashing and encryption. “Salt,” a unique random value added before hashing, complicates hash table attacks. Integrating encryption into the hashes, protected by a separate key, provides increased security: even if the hashes are accessed, their decryption is impossible without the key.
