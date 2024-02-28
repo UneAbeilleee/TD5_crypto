@@ -31,8 +31,8 @@ class LoginForm(FlaskForm):
 def home():
     return 'Welcome to the home page!'
 
-@app.route('/login', methods=['POST', 'GET'])
-def login():
+@app.route('/create', methods=['POST', 'GET'])
+def create():
     form = LoginForm()
 
     if form.validate_on_submit():
@@ -60,7 +60,7 @@ def login():
             # En cas d'échec de la requête au Serveur 2
             return jsonify({'error': 'Failed to encrypt password'}), 500
 
-    return render_template('login.html', form=form)
+    return render_template('create.html', form=form)
 
 if __name__ == '__main__':
     app.run(debug=True)

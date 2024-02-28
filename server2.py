@@ -1,15 +1,27 @@
 from flask import Flask, request, jsonify
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 import base64
 import secrets
 from tink import aead
-from tink.core import tink_config
+from tink import aead
+from flask import Flask, request, jsonify
+import secrets
+from tink import aead
+import tink
 
 app = Flask(__name__)
+aead.register()
+# Define key size and algorithm
+key_size = 128
+algorithm = "AES-GCM"
+
+# Create a key template (using aead_key_templates)
+key_template = aead.aead_key_templates.AES128_GCM
+
+# Generate a new KeysetHandle
+keyset_handle = tink.new_keyset_handle(key_template)
 
 @app.route('/encrypt', methods=['POST'])
 def encrypt():
@@ -19,19 +31,11 @@ def encrypt():
         return jsonify({'error': 'Please provide a hashed password'}), 400
     salt = secrets.token_bytes(16)
     hashed_password_with_salt = hash_password(hashed_password.encode(), salt)
-    encrypted_hash = encrypt_with_aes(hashed_password_with_salt)
-    
-    return jsonify({'encryptedHash': encrypted_hash, 'salt': base64.b64encode(salt).decode('utf-8')}), 200
-
-def encrypt_with_aes(data):
-    key = secrets.token_bytes(32)
-    iv = secrets.token_bytes(16)
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-    encryptor = cipher.encryptor()
-    padder = padding.PKCS7(algorithms.AES.block_size).padder()
-    padded_data = padder.update(data) + padder.finalize()
-    ct = encryptor.update(padded_data) + encryptor.finalize()
-    return base64.b64encode(ct).decode('utf-8')
+    # Get the AEAD primitive from Tink
+    aead_primitive = keyset_handle.primitive(aead.Aead)
+    # Encrypt with Tink
+    ciphertext = aead_primitive.encrypt(hashed_password_with_salt, b'') 
+    return jsonify({'encryptedHash': base64.b64encode(ciphertext).decode('utf-8'), 'salt': base64.b64encode(salt).decode('utf-8')}), 200
 
 # Function to hash the password with salt using PBKDF2HMAC
 def hash_password(password, salt):
@@ -42,7 +46,10 @@ def hash_password(password, salt):
         length=32,
         backend=default_backend()
     )
+
+
     key = kdf.derive(password)
+
     return key
 
 if __name__ == '__main__':
