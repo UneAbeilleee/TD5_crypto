@@ -1,0 +1,4 @@
+psql -U admin -d password_db -h localhost -W
+mon_mot_de_passe
+
+SELECT * FROM utilisateur;
