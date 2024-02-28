@@ -5,10 +5,6 @@ from cryptography.hazmat.primitives import hashes
 import base64
 import secrets
 from tink import aead
-from tink import aead
-from flask import Flask, request, jsonify
-import secrets
-from tink import aead
 import tink
 
 app = Flask(__name__)
@@ -23,16 +19,21 @@ key_template = aead.aead_key_templates.AES128_GCM
 # Generate a new KeysetHandle
 keyset_handle = tink.new_keyset_handle(key_template)
 
+# Generate a single salt for all encryption operations
+
+# Generate a single AEAD primitive for encryption
+aead_primitive = keyset_handle.primitive(aead.Aead)
+
 @app.route('/encrypt', methods=['POST'])
 def encrypt():
     data = request.json
-    hashed_password = data.get('hashedPassword')
-    if not hashed_password:
-        return jsonify({'error': 'Please provide a hashed password'}), 400
-    salt = secrets.token_bytes(16)
-    hashed_password_with_salt = hash_password(hashed_password.encode(), salt)
-    # Get the AEAD primitive from Tink
-    aead_primitive = keyset_handle.primitive(aead.Aead)
+    password = data.get('password')
+    salt_base64 = data.get('salt')
+    salt = base64.b64decode(salt_base64)
+
+    # Use the same salt for all encryption operations
+    hashed_password_with_salt = hash_password(password.encode(), salt)
+
     # Encrypt with Tink
     ciphertext = aead_primitive.encrypt(hashed_password_with_salt, b'') 
     return jsonify({'encryptedHash': base64.b64encode(ciphertext).decode('utf-8'), 'salt': base64.b64encode(salt).decode('utf-8')}), 200
@@ -47,9 +48,7 @@ def hash_password(password, salt):
         backend=default_backend()
     )
 
-
     key = kdf.derive(password)
-
     return key
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ from wtforms import StringField, PasswordField, SubmitField
 from flask_sqlalchemy import SQLAlchemy
 import secrets
 import uuid
+import base64
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -15,6 +16,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 SERVER2_URL = "http://localhost:5001/encrypt"
+salt = secrets.token_bytes(16)
 
 class User(db.Model):
     __tablename__ = 'utilisateur'
@@ -39,13 +41,8 @@ def create():
         # Récupérer les données du formulaire
         username = form.username.data
         password = form.password.data
-
-        # Hasher le mot de passe
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
-
         # Envoyer le mot de passe haché au Serveur 2 pour le chiffrement
-        response = requests.post(SERVER2_URL, json={'hashedPassword': hashed_password})
-
+        response = requests.post(SERVER2_URL, json={'password': password, 'salt': base64.b64encode(salt).decode('utf-8')})
         if response.status_code == 200:
             # Si la requête réussit, récupérez le hash chiffré du Serveur 2
             encrypted_hash = response.json().get('encryptedHash')
@@ -61,6 +58,8 @@ def create():
             return jsonify({'error': 'Failed to encrypt password'}), 500
 
     return render_template('create.html', form=form)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
