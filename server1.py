@@ -16,7 +16,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 SERVER2_URL = "http://localhost:5001/encrypt"
-salt = secrets.token_bytes(16)
 
 class User(db.Model):
     __tablename__ = 'utilisateur'
@@ -42,7 +41,7 @@ def create():
         username = form.username.data
         password = form.password.data
         # Envoyer le mot de passe haché au Serveur 2 pour le chiffrement
-        response = requests.post(SERVER2_URL, json={'password': password, 'salt': base64.b64encode(salt).decode('utf-8')})
+        response = requests.post(SERVER2_URL, json={'password': password})
         if response.status_code == 200:
             # Si la requête réussit, récupérez le hash chiffré du Serveur 2
             encrypted_hash = response.json().get('encryptedHash')
@@ -60,6 +59,39 @@ def create():
     return render_template('create.html', form=form)
 
 
+SERVER2_LOGIN_URL = "http://localhost:5001/login"
+@app.route('/login', methods=['POST', 'GET'])
+def login():
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        # Récupérer les données du formulaire
+        username = form.username.data
+        password = form.password.data
+        all_users = User.query.all()
+        user_to_find = str(username)
+        position = next((i for i, user in enumerate(all_users) if user.username == user_to_find), None)
+        user = User.query.filter_by(username=username).first()
+        if user:
+            # Envoyer les informations de connexion au Serveur 2 pour la vérification
+            response = requests.post(SERVER2_LOGIN_URL, json={'username': username, 'password': password, 'position': position})
+            # Comparer avec les valeurs de la base de données
+
+            # Utiliser response.json() pour récupérer les données du serveur 2
+            data_from_server2 = response.json()
+            final_pass_from_server2 = data_from_server2.get('final_pass')
+            username_from_server2 = data_from_server2.get('username')
+
+            if user.hashed_password == final_pass_from_server2:
+                # Si les mots de passe correspondent, redirigez l'utilisateur
+                return jsonify({'message' :'Success'}), 200
+            else:
+                print(final_pass_from_server2)
+                return jsonify({'error': 'Login failed: Invalid credentials'}), 401
+        else:
+            return jsonify({'error': 'Login failed: User not found'}), 404
+
+    return render_template('login.html', form=form)
 
 if __name__ == '__main__':
     app.run(debug=True)
