@@ -37,16 +37,12 @@ def create():
     form = LoginForm()
 
     if form.validate_on_submit():
-        # Récupérer les données du formulaire
         username = form.username.data
         password = form.password.data
-        # Envoyer le mot de passe haché au Serveur 2 pour le chiffrement
         response = requests.post(SERVER2_URL, json={'password': password})
         if response.status_code == 200:
-            # Si la requête réussit, récupérez le hash chiffré du Serveur 2
-            encrypted_hash = response.json().get('encryptedHash')
 
-            # Insérer le nom d'utilisateur et le hash encrypté dans la base de données
+            encrypted_hash = response.json().get('encryptedHash')
             user = User(id=str(uuid.uuid4()), username=username, hashed_password=encrypted_hash)
             db.session.add(user)
             db.session.commit()
@@ -73,17 +69,12 @@ def login():
         position = next((i for i, user in enumerate(all_users) if user.username == user_to_find), None)
         user = User.query.filter_by(username=username).first()
         if user:
-            # Envoyer les informations de connexion au Serveur 2 pour la vérification
             response = requests.post(SERVER2_LOGIN_URL, json={'username': username, 'password': password, 'position': position})
-            # Comparer avec les valeurs de la base de données
-
-            # Utiliser response.json() pour récupérer les données du serveur 2
             data_from_server2 = response.json()
             final_pass_from_server2 = data_from_server2.get('final_pass')
             username_from_server2 = data_from_server2.get('username')
 
             if user.hashed_password == final_pass_from_server2:
-                # Si les mots de passe correspondent, redirigez l'utilisateur
                 return jsonify({'message' :'Success'}), 200
             else:
                 print(final_pass_from_server2)
