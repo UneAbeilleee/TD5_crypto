@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -12,6 +13,7 @@ app = Flask(__name__)
 daead.register()
 keyset_handle = tink.new_keyset_handle(daead.deterministic_aead_key_templates.AES256_SIV)
 user_salts = []
+users_entropy=[]
 
 # Generate a single AEAD primitive for encryption
 daead_primitive = keyset_handle.primitive(daead.DeterministicAead)
@@ -26,7 +28,10 @@ def encrypt():
     salt = bcrypt.gensalt()
     print(salt)
     user_salts.append(salt)
-    password_bytes = password.encode()
+    entropy=secrets.token_hex(8)
+    users_entropy.append(entropy)
+    
+    password_bytes = (entropy+password).encode()
     
 
     # Use the generated salt for encryption
@@ -50,8 +55,9 @@ def login():
     final_pass = None
     print(position)
     salt = user_salts[position]
+    entropy=users_entropy[position]
     print(salt)
-    password_bytes = password.encode()
+    password_bytes = (entropy+password).encode()
     hashed_password = bcrypt.hashpw(password_bytes, salt)
     print(hashed_password)
     ciphertext = daead_primitive.encrypt_deterministically(hashed_password, b'')
@@ -64,4 +70,5 @@ def login():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
+
 
