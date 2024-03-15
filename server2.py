@@ -8,12 +8,41 @@ import secrets
 from tink import aead, daead,core
 import bcrypt
 import tink
+import os
 
 app = Flask(__name__)
 daead.register()
 keyset_handle = tink.new_keyset_handle(daead.deterministic_aead_key_templates.AES256_SIV)
-user_salts = []
-users_entropy=[]
+
+user_salt_file = "users_salt.txt"
+user_entropy_file = "users_entropy.txt"
+
+if not os.path.exists(user_salt_file):
+    with open(user_salt_file, 'w'):
+        pass
+
+if not os.path.exists(user_entropy_file):
+    with open(user_entropy_file, 'w'):
+        pass
+        
+def read_salts_from_file():
+    with open(user_salt_file, 'r') as f:
+        return [base64.b64decode(line.strip()) for line in f]
+
+# Function to write salt to file
+def write_salt_to_file(salt):
+    with open(user_salt_file, 'a') as f:
+        f.write(base64.b64encode(salt).decode() + '\n')
+
+# Function to read entropy from file
+def read_entropy_from_file():
+    with open(user_entropy_file, 'r') as f:
+        return [line.strip() for line in f]
+
+# Function to write entropy to file
+def write_entropy_to_file(entropy):
+    with open(user_entropy_file, 'a') as f:
+        f.write(entropy + '\n')
 
 # Generate a single AEAD primitive for encryption
 daead_primitive = keyset_handle.primitive(daead.DeterministicAead)
@@ -27,9 +56,9 @@ def encrypt():
     # Generate a unique salt for each user
     salt = bcrypt.gensalt()
     print(salt)
-    user_salts.append(salt)
+    write_salt_to_file(salt)
     entropy=secrets.token_hex(8)
-    users_entropy.append(entropy)
+    write_entropy_to_file(entropy)
     
     password_bytes = (entropy+password).encode()
     
@@ -54,8 +83,11 @@ def login():
     position = data.get('position')
     final_pass = None
     print(position)
-    salt = user_salts[position]
-    entropy=users_entropy[position]
+    salts = read_salts_from_file()
+    entropies = read_entropy_from_file()
+
+    salt = salts[position]
+    entropy = entropies[position]
     print(salt)
     password_bytes = (entropy+password).encode()
     hashed_password = bcrypt.hashpw(password_bytes, salt)
