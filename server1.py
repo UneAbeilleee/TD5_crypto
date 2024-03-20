@@ -7,6 +7,16 @@ from flask_sqlalchemy import SQLAlchemy
 import secrets
 import uuid
 import base64
+from flask import Flask, request, jsonify
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+import base64
+import secrets
+from tink import aead, daead,core
+import bcrypt
+import tink
+import os
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -22,6 +32,7 @@ class User(db.Model):
     id = db.Column(db.String, primary_key=True)
     username = db.Column(db.String)
     hashed_password = db.Column(db.String)
+    salt=db.Column(db.String)
 
 class LoginForm(FlaskForm):
     username = StringField('Username')
@@ -39,11 +50,20 @@ def create():
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
+        
+        # Generate a unique salt for each user
+        salt = bcrypt.gensalt()
+        print(salt)
+        password_bytes = (password).encode()
+        password = bcrypt.hashpw(password_bytes, salt)
+        print(password)
+        password = password.decode('utf-8')
+    
         response = requests.post(SERVER2_URL, json={'password': password})
         if response.status_code == 200:
 
             encrypted_hash = response.json().get('encryptedHash')
-            user = User(id=str(uuid.uuid4()), username=username, hashed_password=encrypted_hash)
+            user = User(id=str(uuid.uuid4()), username=username, hashed_password=encrypted_hash,salt=salt)
             db.session.add(user)
             db.session.commit()
 
@@ -55,7 +75,7 @@ def create():
     return render_template('create.html', form=form)
 
 
-SERVER2_LOGIN_URL = "http://localhost:5001/login"
+SERVER2_LOGIN_URL = "http://localhost:5001/encrypt"
 @app.route('/login', methods=['POST', 'GET'])
 def login():
     form = LoginForm()
@@ -64,20 +84,19 @@ def login():
         # Récupérer les données du formulaire
         username = form.username.data
         password = form.password.data
-        all_users = User.query.all()
-        user_to_find = str(username)
-        position = next((i for i, user in enumerate(all_users) if user.username == user_to_find), None)
         user = User.query.filter_by(username=username).first()
         if user:
-            response = requests.post(SERVER2_LOGIN_URL, json={'username': username, 'password': password, 'position': position})
-            data_from_server2 = response.json()
-            final_pass_from_server2 = data_from_server2.get('final_pass')
-            username_from_server2 = data_from_server2.get('username')
-
-            if user.hashed_password == final_pass_from_server2:
+            salt = user.salt.tobytes()
+            password_bytes = (password).encode()
+            password = bcrypt.hashpw(password_bytes, salt)
+            print(password)
+            password = password.decode('utf-8')
+            response = requests.post(SERVER2_LOGIN_URL, json={'username': username, 'password': password})
+            encrypted_hash = response.json().get('encryptedHash')
+            if user.hashed_password == encrypted_hash:
                 return jsonify({'message' :'Success'}), 200
             else:
-                print(final_pass_from_server2)
+                print(encrypted_hash)
                 return jsonify({'error': 'Login failed: Invalid credentials'}), 401
         else:
             return jsonify({'error': 'Login failed: User not found'}), 404

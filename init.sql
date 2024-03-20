@@ -8,6 +8,7 @@ CREATE DATABASE password_db;
 CREATE TABLE utilisateur (
     id UUID PRIMARY KEY,
     username VARCHAR(255),
-    hashed_password VARCHAR(255)
+    hashed_password VARCHAR(255),
+    salt BYTEA
 );
 
