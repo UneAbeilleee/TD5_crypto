@@ -15,8 +15,11 @@ def hash(mdp):
 
 def oprf(mdp, nom_utilisateur):
     mdp_hashe = hash(mdp)
-    r = secrets.randbits(128)  # Utiliser secrets.randbits() pour générer un nombre aléatoire plus rapidement
-    C = pow(int.from_bytes(mdp_hashe, byteorder='big'), r, PARAMETRES_DH.parameter_numbers().p)  # Utiliser pow() pour effectuer l'exponentiation
+    #we do this because we cannot do this because it takes too many time
+    #r = int.from_bytes(os.urandom(16), byteorder='big')
+    #C = int.from_bytes(mdp, byteorder='big') ** r
+    r = secrets.randbits(128) 
+    C = pow(int.from_bytes(mdp_hashe, byteorder='big'), r, PARAMETRES_DH.parameter_numbers().p)  
     print('salut')
     envoyer(json.dumps(["OPRF", nom_utilisateur, C]))
     print("Envoi des données OPRF...")
