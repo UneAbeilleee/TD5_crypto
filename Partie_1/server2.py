@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -34,5 +33,3 @@ def encrypt():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
-
-
